@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Viaturas — CPAI 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --azul-esc:#0C447C;--azul-med:#185FA5;--azul-clr:#E6F1FB;
+  --verm:#A32D2D;--verm-clr:#FCEBEB;
+  --amber:#854F0B;--amber-clr:#FAEEDA;
+  --verde:#3B6D11;--verde-clr:#EAF3DE;
+  --cinza:#444441;--borda:#D3D1C7;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#F5F6FA;color:var(--cinza);font-size:13px}
+.header{background:var(--azul-esc);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.header h1{font-size:15px;font-weight:700}
+.header p{font-size:11px;opacity:.75;margin-top:3px}
+.status-bar{display:flex;align-items:center;gap:8px;font-size:11px;flex-shrink:0}
+.dot{width:8px;height:8px;border-radius:50%;background:#4CAF50;flex-shrink:0}
+.dot.load{background:#FFC107;animation:pulse 1.2s infinite}
+.dot.emb{background:#9C27B0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.toolbar{background:#fff;border-bottom:1px solid var(--borda);padding:10px 28px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.toolbar-label{font-size:11px;color:#888;margin-right:4px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid transparent;font-family:Arial;transition:all .15s}
+.btn-outline{background:#fff;border-color:var(--borda);color:var(--cinza)}
+.btn-outline:hover{border-color:#888;background:#f9f9f9}
+.btn-blue{background:var(--azul-esc);color:#fff;border-color:var(--azul-esc)}
+.btn-blue:hover{background:var(--azul-med)}
+.btn-green{background:#2E7D32;color:#fff;border-color:#2E7D32}
+.btn-green:hover{background:#388E3C}
+.btn-sep{width:1px;height:24px;background:var(--borda);margin:0 4px}
+.spin{animation:rotar 1s linear infinite}
+@keyframes rotar{to{transform:rotate(360deg)}}
+.main{padding:18px 24px 40px;max-width:1300px;margin:0 auto}
+.notice{border-radius:8px;padding:9px 14px;font-size:11px;display:flex;align-items:flex-start;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.notice.info{background:var(--azul-clr);border:1px solid #B5D4F4;color:var(--azul-esc)}
+.notice.warn{background:#FFF8E1;border:1px solid #FFD54F;color:#5D4037}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.met{background:#fff;border-radius:10px;padding:14px 16px;border:1px solid var(--borda)}
+.met .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:5px}
+.met .val{font-size:28px;font-weight:700}
+.met .sub{font-size:11px;color:#888;margin-top:3px}
+.c-azul{color:var(--azul-med)}.c-verm{color:var(--verm)}.c-verde{color:var(--verde)}
+.charts-row{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-bottom:18px}
+.card{background:#fff;border-radius:10px;border:1px solid var(--borda);padding:16px 18px}
+.card h2{font-size:13px;font-weight:700;color:var(--azul-esc);margin-bottom:12px}
+.leg{display:flex;gap:14px;margin-bottom:8px;font-size:11px;color:#666}
+.leg span{display:flex;align-items:center;gap:4px}
+.ld{width:10px;height:10px;border-radius:2px;display:inline-block}
+.table-card{background:#fff;border-radius:10px;border:1px solid var(--borda);padding:16px 18px;margin-bottom:18px}
+.table-card h2{font-size:13px;font-weight:700;color:var(--azul-esc);margin-bottom:12px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{background:var(--azul-esc)}
+th{color:#fff;padding:8px 10px;text-align:center;font-size:11px;font-weight:600;white-space:nowrap}
+th.left{text-align:left}
+td{padding:7px 10px;border-bottom:1px solid #eee;text-align:center;vertical-align:middle}
+td.left{text-align:left;font-weight:600}
+tr:last-child td{border-bottom:none}
+tr:hover:not(.totrow) td{background:#f9f9f9}
+tr.totrow td{background:var(--azul-esc)!important;color:#fff!important;font-weight:700;border:none}
+.cpab{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:12px}
+.bc{background:var(--verm-clr);color:var(--verm)}
+.bd{background:var(--amber-clr);color:var(--amber)}
+.bs{background:var(--verde-clr);color:var(--verde)}
+.bn{background:#F1EFE8;color:#666;font-style:italic}
+.pbar{display:flex;align-items:center;gap:5px;justify-content:center}
+.ptrack{width:48px;height:5px;background:#eee;border-radius:3px;overflow:hidden;flex-shrink:0}
+.pfill{height:100%;border-radius:3px}
+.ptag{font-size:10px;background:#FFF9E6;color:#7A5700;border:1px solid #FFD54F;border-radius:3px;padding:1px 5px;margin-left:3px}
+.footer{text-align:center;font-size:10px;color:#aaa;padding:12px}
+.print-footer{display:none;text-align:center;font-size:9px;color:#888;margin-top:16px;border-top:1px solid #ddd;padding-top:8px}
+
+@media(max-width:768px){
+  .metrics{grid-template-columns:1fr 1fr}
+  .charts-row{grid-template-columns:1fr}
+  .main{padding:12px 12px 30px}
+  .toolbar{padding:8px 12px}
+}
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body{background:#fff!important;font-size:11px}
+  .toolbar,.notice,.footer,.no-print{display:none!important}
+  .header{padding:12px 20px;background:var(--azul-esc)!important;color:#fff!important}
+  .header h1{font-size:13px}
+  .main{padding:12px 16px 20px;max-width:100%}
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .met{padding:10px 12px;border:1px solid #ccc;page-break-inside:avoid;border-radius:6px}
+  .met .val{font-size:22px}
+  .charts-row{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;margin-bottom:12px;page-break-inside:avoid}
+  .card{padding:12px 14px;border:1px solid #ccc;border-radius:6px;page-break-inside:avoid}
+  .table-card{padding:12px 14px;border:1px solid #ccc;border-radius:6px}
+  table{font-size:10px}
+  th{padding:6px 8px;font-size:10px}
+  td{padding:5px 8px}
+  thead{display:table-header-group}
+  tr{page-break-inside:avoid}
+  thead tr{background:var(--azul-esc)!important}
+  th{color:#fff!important}
+  tr.totrow td{background:var(--azul-esc)!important;color:#fff!important}
+  .print-footer{display:block!important}
+  canvas{max-width:100%!important}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Plano de Necessidade de Viaturas — CPAI 2026</h1>
+    <p>Comando de Policiamento do Interior · Sincronização automática com Google Sheets</p>
+  </div>
+  <div class="status-bar">
+    <div class="dot" id="dot"></div>
+    <span id="stxt" style="color:#fff;opacity:.85">Carregando...</span>
+  </div>
+</div>
+
+<div class="toolbar no-print">
+  <span class="toolbar-label">Exportar / Imprimir:</span>
+  <button class="btn btn-outline" onclick="doPrint()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+      <rect x="6" y="14" width="12" height="8"/>
+    </svg>
+    Imprimir
+  </button>
+  <button class="btn btn-green" onclick="doPDF()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
+    </svg>
+    Exportar PDF
+  </button>
+  <div class="btn-sep"></div>
+  <button class="btn btn-outline" onclick="forceRefresh()" id="rbtn">
+    <svg id="rico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+    </svg>
+    Sincronizar
+  </button>
+  <span id="attTime" style="font-size:11px;color:#aaa;margin-left:4px"></span>
+</div>
+
+<div class="main">
+
+  <div class="notice info no-print" id="noticeBox">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;margin-top:1px">
+      <circle cx="8" cy="8" r="7" stroke="#185FA5" stroke-width="1.2"/>
+      <rect x="7.25" y="6.5" width="1.5" height="5" rx=".5" fill="#185FA5"/>
+      <rect x="7.25" y="4" width="1.5" height="1.5" rx=".5" fill="#185FA5"/>
+    </svg>
+    <span id="noticeMsg">Carregando dados embutidos e tentando sincronizar com o Google Sheets...</span>
+  </div>
+
+  <div class="metrics">
+    <div class="met"><div class="lbl">Viaturas ativas</div><div class="val c-azul" id="mA">—</div><div class="sub" id="mAs">aguardando</div></div>
+    <div class="met"><div class="lbl">Déficit total</div><div class="val c-verm" id="mD">—</div><div class="sub" id="mDs">adicionais necessárias</div></div>
+    <div class="met"><div class="lbl">Total necessário</div><div class="val" id="mT">—</div><div class="sub">ativas + déficit</div></div>
+    <div class="met"><div class="lbl">Cobertura</div><div class="val c-verde" id="mP">—</div><div class="sub" id="mPs">aguardando</div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="card">
+      <h2>Ativas vs. déficit por CPA</h2>
+      <div class="leg">
+        <span><span class="ld" style="background:#378ADD"></span>Ativas</span>
+        <span><span class="ld" style="background:#F09595"></span>Déficit</span>
+      </div>
+      <div style="position:relative;width:100%;height:250px"><canvas id="cBar"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Distribuição de ativas por CPA</h2>
+      <div style="position:relative;width:100%;height:250px"><canvas id="cDona"></canvas></div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <h2>Detalhamento por batalhão</h2>
+    <div class="tw">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:76px">CPA</th>
+            <th class="left" style="width:110px">Batalhão</th>
+            <th>Ativas</th>
+            <th>Déficit</th>
+            <th>Total nec.</th>
+            <th>Cobertura</th>
+            <th>Situação</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="print-footer" id="printFooter">
+    Plano de Necessidade de Viaturas — CPAI 2026 &nbsp;·&nbsp; Gerado em <span id="printDate"></span> &nbsp;·&nbsp; Fonte: Google Sheets
+  </div>
+</div>
+
+<div class="footer no-print">
+  Dashboard CPAI 2026 · <span id="ftime">—</span>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   DADOS EMBUTIDOS — atualizados em 31/03/2026 19:18 UTC
+   Fonte: Google Sheets (CPAI 2026)
+   ══════════════════════════════════════════════════════ */
+const FALLBACK_DATA = [{"cpa":"CPA I-1","bpm":"15\u00ba BPM","a":18,"n":5},{"cpa":"CPA I-1","bpm":"19\u00ba BPM","a":10,"n":2},{"cpa":"CPA I-1","bpm":"23\u00ba BPM","a":8,"n":6},{"cpa":"CPA I-1","bpm":"39\u00ba BPM","a":11,"n":8},{"cpa":"CPA I-2","bpm":"5\u00ba BPM","a":5,"n":5},{"cpa":"CPA I-2","bpm":"18\u00ba BPM","a":15,"n":4},{"cpa":"CPA I-2","bpm":"33\u00ba BPM","a":7,"n":4},{"cpa":"CPA I-2","bpm":"37\u00ba BPM","a":7,"n":5},{"cpa":"CPA I-3","bpm":"3\u00ba BPM","a":6,"n":5},{"cpa":"CPA I-3","bpm":"12\u00ba BPM","a":11,"n":4},{"cpa":"CPA I-3","bpm":"14\u00ba BPM","a":10,"n":4},{"cpa":"CPA I-3","bpm":"26\u00ba BPM","a":6,"n":5},{"cpa":"CPA I-3","bpm":"30\u00ba BPM","a":5,"n":3},{"cpa":"CPA I-3","bpm":"32\u00ba BPM","a":5,"n":4},{"cpa":"CPA I-3","bpm":"34\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-3","bpm":"2\u00ba BMT","a":1,"n":4},{"cpa":"CPA I-3","bpm":"2\u00ba EPMont","a":1,"n":null},{"cpa":"CPA I-4","bpm":"2\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-4","bpm":"11\u00ba BPM","a":7,"n":8},{"cpa":"CPA I-4","bpm":"17\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-4","bpm":"24\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-4","bpm":"44\u00ba BPM","a":4,"n":8},{"cpa":"CPA I-4","bpm":"47\u00ba BPM","a":1,"n":3},{"cpa":"CPA I-4","bpm":"1\u00aa CIMT","a":0,"n":4},{"cpa":"CPA I-5","bpm":"10\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-5","bpm":"25\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-5","bpm":"36\u00ba BPM","a":10,"n":8},{"cpa":"CPA I-5","bpm":"41\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-5","bpm":"45\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-6","bpm":"4\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-6","bpm":"35\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-6","bpm":"46\u00ba BPM","a":8,"n":13},{"cpa":"CPA I-7","bpm":"16\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-7","bpm":"27\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-7","bpm":"28\u00ba BPM","a":null,"n":null},{"cpa":"CPA I-8","bpm":"7\u00ba BPM","a":13,"n":6},{"cpa":"CPA I-8","bpm":"29\u00ba BPM","a":8,"n":3},{"cpa":"CPA I-8","bpm":"31\u00ba BPM","a":9,"n":5}];
+const FALLBACK_TS   = '31/03/2026 19:18';
+
+const SHEET_ID = '1Sfqo61oiBqZ8rXGkYJwt18Lu9i8rt1jk';
+const GID      = '956463957';
+const INTERVAL = 60000;
+
+const CPA_C = {
+  'CPA I-1':{bg:'#E6F1FB',txt:'#0C447C',ch:'#378ADD'},
+  'CPA I-2':{bg:'#E1F5EE',txt:'#085041',ch:'#1D9E75'},
+  'CPA I-3':{bg:'#FAECE7',txt:'#712B13',ch:'#D85A30'},
+  'CPA I-4':{bg:'#FBEAF0',txt:'#72243E',ch:'#D4537E'},
+  'CPA I-5':{bg:'#EEEDFE',txt:'#3C3489',ch:'#7F77DD'},
+  'CPA I-6':{bg:'#FAEEDA',txt:'#633806',ch:'#BA7517'},
+  'CPA I-7':{bg:'#EAF3DE',txt:'#27500A',ch:'#639922'},
+  'CPA I-8':{bg:'#E6F1FB',txt:'#0C447C',ch:'#185FA5'},
+};
+
+let barChart=null, donaChart=null, timer=null, liveMode=false;
+
+/* ── PARSER CSV ── */
+function splitLine(line){
+  const r=[];let c='',inQ=false;
+  for(const ch of line){
+    if(ch==='"'){inQ=!inQ;continue}
+    if(ch===','&&!inQ){r.push(c);c='';continue}
+    c+=ch;
+  }
+  r.push(c);return r;
+}
+function parseCSV(raw){
+  const rows=[];let cpa='';
+  for(const line of raw.split(/\r?\n/)){
+    const cols=splitLine(line);
+    if(cols.length<2)continue;
+    const c0=cols[0].trim(),c1=cols[1].trim();
+    const c2=(cols[2]||'').trim(),c3=(cols[3]||'').trim();
+    if(/^CPA I-\d+$/.test(c0))cpa=c0;
+    const bpm=/^CPA I-\d+$/.test(c0)?c1:(c0||c1);
+    if(!bpm)continue;
+    if(/TOTAL|PLANO|Remeto|AVISO|VIATURAS OPERANDO|UPM \/ BPM|CPAI/i.test(bpm))continue;
+    if(!/\d|CIMT|Mont/i.test(bpm))continue;
+    if(!cpa)continue;
+    const a=/^\d+$/.test(c2)?parseInt(c2):null;
+    const n=/^\d+$/.test(c3)?parseInt(c3):null;
+    rows.push({cpa,bpm,a,n});
+  }
+  return rows;
+}
+
+/* ── SITUAÇÃO / BARRAS ── */
+function sit(a,n){
+  if(a===null&&n===null)return{l:'Sem dados',c:'bn'};
+  if(n===0)return{l:'Suficiente',c:'bs'};
+  const r=(a!==null&&n!==null&&(a+n)>0)?a/(a+n):0;
+  return r<0.4?{l:'Crítico',c:'bc'}:{l:'Deficitário',c:'bd'};
+}
+function pBar(a,n){
+  if(a===null||n===null)return'<span style="color:#ccc">—</span>';
+  const tot=a+n;if(!tot)return'<span style="color:#ccc">—</span>';
+  const pct=Math.round(a/tot*100);
+  const col=pct>=70?'#639922':pct>=40?'#BA7517':'#E24B4A';
+  return`<div class="pbar"><div class="ptrack"><div class="pfill" style="width:${pct}%;background:${col}"></div></div><span style="font-size:11px;color:${col};font-weight:700">${pct}%</span></div>`;
+}
+
+/* ── RENDER ── */
+function renderAll(rows, ts, source){
+  renderMetrics(rows);
+  renderCharts(rows);
+  renderTable(rows);
+  const now = ts || new Date().toLocaleString('pt-BR');
+  document.getElementById('attTime').textContent = 'Atualizado: '+now;
+  document.getElementById('ftime').textContent   = (source==='live'?'Ao vivo':'Dados de ')+now;
+  document.getElementById('printDate').textContent = now;
+
+  const box = document.getElementById('noticeBox');
+  const msg = document.getElementById('noticeMsg');
+  if(source==='live'){
+    box.className='notice info no-print';
+    msg.textContent='Sincronizado com Google Sheets em tempo real. Atualização automática a cada 60 s.';
+    document.getElementById('dot').className='dot';
+    document.getElementById('stxt').textContent='Ao vivo · '+now;
+  } else {
+    box.className='notice warn no-print';
+    msg.innerHTML='<strong>Dados locais</strong> (última sincronização: '+now+'). O dashboard tentará reconectar automaticamente. Se usar fora do claude.ai, conectará em segundos.';
+    document.getElementById('dot').className='dot emb';
+    document.getElementById('stxt').textContent='Dados locais · '+now;
+  }
+}
+
+function renderTable(rows){
+  const tb=document.getElementById('tbody');
+  tb.innerHTML='';
+  rows.forEach(r=>{
+    const tot=(r.a!==null&&r.n!==null)?r.a+r.n:null;
+    const s=sit(r.a,r.n);
+    const c=CPA_C[r.cpa]||{bg:'#eee',txt:'#333'};
+    const pA=r.a===null?'<span class="ptag">pendente</span>':'';
+    const pN=r.n===null?'<span class="ptag">pendente</span>':'';
+    tb.innerHTML+=`<tr>
+      <td><span class="cpab" style="background:${c.bg};color:${c.txt}">${r.cpa}</span></td>
+      <td class="left">${r.bpm}</td>
+      <td>${r.a!==null?r.a:'—'}${pA}</td>
+      <td>${r.n!==null?r.n:'—'}${pN}</td>
+      <td>${tot!==null?tot:'—'}</td>
+      <td>${pBar(r.a,r.n)}</td>
+      <td><span class="badge ${s.c}">${s.l}</span></td>
+    </tr>`;
+  });
+  const tA=rows.reduce((s,r)=>s+(r.a||0),0);
+  const tN=rows.reduce((s,r)=>s+(r.n||0),0);
+  const tT=tA+tN;
+  tb.innerHTML+=`<tr class="totrow">
+    <td colspan="2" style="text-align:left;padding-left:10px">Total geral</td>
+    <td>${tA}</td><td>${tN}</td><td>${tT}</td>
+    <td><span style="font-size:11px">${tT>0?Math.round(tA/tT*100)+'%':'—'}</span></td>
+    <td></td>
+  </tr>`;
+}
+
+function renderMetrics(rows){
+  const tA=rows.reduce((s,r)=>s+(r.a||0),0);
+  const tN=rows.reduce((s,r)=>s+(r.n||0),0);
+  const tT=tA+tN;
+  const pct=tT>0?Math.round(tA/tT*100):0;
+  const pend=rows.filter(r=>r.a===null||r.n===null).length;
+  document.getElementById('mA').textContent=tA;
+  document.getElementById('mD').textContent=tN;
+  document.getElementById('mT').textContent=tT;
+  document.getElementById('mP').textContent=pct+'%';
+  document.getElementById('mAs').textContent=`de ${tT} necessárias`;
+  document.getElementById('mDs').textContent=`${tN} em falta`;
+  document.getElementById('mPs').textContent=pend>0?`${pend} batalhões pendentes`:'todos preenchidos ✓';
+}
+
+function aggCPA(rows){
+  return Object.keys(CPA_C).map(cpa=>{
+    const rs=rows.filter(r=>r.cpa===cpa);
+    return{cpa,ativas:rs.reduce((s,r)=>s+(r.a||0),0),nec:rs.reduce((s,r)=>s+(r.n||0),0)};
+  });
+}
+function renderCharts(rows){
+  const cs=aggCPA(rows);
+  const labels=cs.map(c=>c.cpa);
+  const ativas=cs.map(c=>c.ativas);
+  const necs=cs.map(c=>c.nec);
+  const colors=cs.map(c=>CPA_C[c.cpa].ch);
+  if(barChart){barChart.data.datasets[0].data=ativas;barChart.data.datasets[1].data=necs;barChart.update();}
+  else{
+    barChart=new Chart(document.getElementById('cBar'),{
+      type:'bar',
+      data:{labels,datasets:[
+        {label:'Ativas',data:ativas,backgroundColor:'#378ADD',borderRadius:4,barPercentage:.6},
+        {label:'Déficit',data:necs,backgroundColor:'#F09595',borderRadius:4,barPercentage:.6}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},y:{grid:{color:'rgba(0,0,0,.06)'},ticks:{font:{size:10}}}}
+      }
+    });
+  }
+  if(donaChart){donaChart.data.datasets[0].data=ativas;donaChart.update();}
+  else{
+    donaChart=new Chart(document.getElementById('cDona'),{
+      type:'doughnut',
+      data:{labels,datasets:[{data:ativas,backgroundColor:colors,borderWidth:2,borderColor:'#fff',hoverOffset:5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:7}},
+          tooltip:{callbacks:{label:ctx=>{const c=cs[ctx.dataIndex];return` ${c.ativas} ativas · déf. ${c.nec}`}}}
+        },cutout:'60%'
+      }
+    });
+  }
+}
+
+/* ── FETCH LIVE ── */
+async function fetchLive(){
+  const url=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}&t=${Date.now()}`;
+  const res=await fetch(url,{cache:'no-store'});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const text=await res.text();
+  const rows=parseCSV(text);
+  if(!rows.length)throw new Error('Sem dados');
+  return rows;
+}
+
+async function trySync(){
+  try{
+    const rows=await fetchLive();
+    liveMode=true;
+    renderAll(rows, new Date().toLocaleString('pt-BR'), 'live');
+  }catch(e){
+    if(!liveMode){
+      // mantém dados embutidos, apenas loga
+      console.warn('Sync falhou (normal no claude.ai):', e.message);
+    }
+  }
+}
+
+function forceRefresh(){
+  clearInterval(timer);
+  document.getElementById('rico').classList.add('spin');
+  trySync().finally(()=>{
+    document.getElementById('rico').classList.remove('spin');
+    timer=setInterval(trySync, INTERVAL);
+  });
+}
+
+/* ── IMPRESSÃO / PDF ── */
+function doPrint(){ setTimeout(()=>window.print(),200); }
+function doPDF(){
+  const tip=document.createElement('div');
+  tip.id='pdf-tip';
+  tip.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#0C447C;color:#fff;text-align:center;padding:10px 16px;font-size:12px;font-family:Arial;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap';
+  tip.innerHTML=`<strong>Exportar PDF:</strong> No diálogo que abrirá, selecione <strong>"Salvar como PDF"</strong> como destino.
+    <span style="opacity:.7">Chrome/Edge: Destino → Salvar como PDF &nbsp;·&nbsp; Firefox: Impressora → PDF &nbsp;·&nbsp; Safari: PDF → Salvar como PDF</span>
+    <button onclick="document.getElementById('pdf-tip').remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;flex-shrink:0">✕</button>`;
+  document.body.appendChild(tip);
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{const t=document.getElementById('pdf-tip');if(t)t.remove();},2000);
+  },500);
+}
+
+/* ── INICIALIZAÇÃO ── */
+// 1. Carrega dados embutidos imediatamente (funciona em qualquer ambiente)
+renderAll(FALLBACK_DATA, FALLBACK_TS, 'fallback');
+// 2. Tenta sincronizar com Google Sheets em paralelo
+trySync();
+// 3. Repete a cada 60 s
+timer=setInterval(trySync, INTERVAL);
+</script>
+</body>
+</html>
